@@ -57,6 +57,30 @@
             50% { transform: scale(1.2); }
         }
 
+        /* --- LOCK SCREEN (SETTINGS TANGGAL) --- */
+        #lock-screen {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 5000;
+            display: none; /* Muncul setelah loading */
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(20px);
+        }
+
+        input[type="date"] {
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--pink-primary);
+            background: rgba(0,0,0,0.5);
+            color: white;
+            margin: 20px 0;
+            width: 100%;
+            font-family: inherit;
+            outline: none;
+        }
+
         /* --- BACKGROUND ENGINE --- */
         #bg-canvas {
             position: fixed;
@@ -78,7 +102,7 @@
             backdrop-filter: blur(20px);
             padding: 10px 25px;
             border-radius: 50px;
-            display: flex;
+            display: none; /* Hidden until unlocked */
             gap: 20px;
             border: 1px solid var(--pink-primary);
             z-index: 1000;
@@ -106,6 +130,7 @@
             height: 100vh;
             width: 100%;
             position: relative;
+            display: none; /* Hidden until unlocked */
         }
 
         .page {
@@ -147,7 +172,6 @@
             margin-bottom: 20px;
         }
 
-        /* Stats Grid */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -164,7 +188,6 @@
 
         .stat-item h3 { font-size: 1.8rem; color: var(--gold); }
 
-        /* Gallery */
         .gallery-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
@@ -185,7 +208,6 @@
         .img-box img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; }
         .img-box:hover img { transform: scale(1.1); }
 
-        /* Music UI */
         .music-ui {
             margin-top: 20px;
             padding: 15px;
@@ -196,18 +218,6 @@
             gap: 15px;
         }
 
-        /* Message Box */
-        .msg-input {
-            width: 100%;
-            background: none;
-            border: 1px solid var(--pink-primary);
-            padding: 15px;
-            color: white;
-            border-radius: 10px;
-            margin-bottom: 10px;
-        }
-
-        /* Final Buttons */
         .btn-yes {
             background: var(--pink-primary);
             color: white;
@@ -238,9 +248,19 @@
         <p style="margin-top: 20px; letter-spacing: 3px;">INITIALIZING LOVE...</p>
     </div>
 
+    <div id="lock-screen">
+        <div class="card" id="lock-card">
+            <h2 class="title" style="font-size: 2.5rem;">Verifikasi Cinta</h2>
+            <p>Masukkan tanggal jadian kita untuk membuka :</p>
+            <input type="date" id="dateInput">
+            <button class="btn-yes" onclick="checkDate()">Buka Kunci ❤️</button>
+            <p id="error-msg" style="color: #ff4d6d; font-size: 0.8rem; margin-top: 15px; display: none; font-weight: bold;">Ups! Tanggalnya salah sayang, coba ingat lagi.</p>
+        </div>
+    </div>
+
     <canvas id="bg-canvas"></canvas>
 
-    <nav>
+    <nav id="mainNav">
         <button onclick="changePage(0)" class="active" title="Home"><i class="fas fa-home"></i></button>
         <button onclick="changePage(1)" title="Timeline"><i class="fas fa-history"></i></button>
         <button onclick="changePage(2)" title="Memories"><i class="fas fa-images"></i></button>
@@ -252,7 +272,7 @@
         <source src="https://www.bensound.com/bensound-music/bensound-love.mp3" type="audio/mpeg">
     </audio>
 
-    <main>
+    <main id="mainContent">
         <section class="page active" id="page-0">
             <div class="card">
                 <p style="text-transform: uppercase; letter-spacing: 5px;">Happy Valentine's Day 2026</p>
@@ -273,8 +293,7 @@
         <section class="page" id="page-1">
             <div class="card">
                 <h2 class="title" style="font-size: 2.5rem;">Waktu Yang Kita Lalui</h2>
-                <div class="stats-grid" id="timerGrid">
-                    </div>
+                <div class="stats-grid" id="timerGrid"></div>
                 <p>Hari demi hari berlalu, dan perasaanku tetap sama. Bahkan bertambah setiap detiknya.</p>
             </div>
         </section>
@@ -317,6 +336,9 @@
     </main>
 
     <script>
+        // --- TANGGAL JADIAN (FORMAT: YYYY-MM-DD) ---
+        const TANGGAL_JADIAN = "2026-02-14"; 
+
         // --- 1. CORE LOGIC ---
         const pages = document.querySelectorAll('.page');
         const navBtns = document.querySelectorAll('nav button');
@@ -326,36 +348,45 @@
         function changePage(index) {
             pages.forEach(p => p.classList.remove('active'));
             navBtns.forEach(b => b.classList.remove('active'));
-            
             pages[index].classList.add('active');
             navBtns[index].classList.add('active');
-
-            // Sound effect on change
             if(isPlaying) {
                 const clickSfx = new Audio('https://www.soundjay.com/buttons/sounds/button-16.mp3');
-                clickSfx.volume = 0.2;
-                clickSfx.play();
+                clickSfx.volume = 0.2; clickSfx.play();
             }
         }
 
-        // --- 2. PRELOADER ---
+        // --- 2. PRELOADER & LOCK SYSTEM ---
         window.addEventListener('load', () => {
             setTimeout(() => {
                 document.getElementById('preloader').style.display = 'none';
-                gsap.from(".card", { duration: 1, y: 50, opacity: 0, ease: "back" });
+                document.getElementById('lock-screen').style.display = 'flex';
+                gsap.from("#lock-card", { duration: 1, y: 50, opacity: 0, ease: "back" });
             }, 2000);
         });
+
+        function checkDate() {
+            const input = document.getElementById('dateInput').value;
+            const error = document.getElementById('error-msg');
+            if(input === TANGGAL_JADIAN) {
+                gsap.to("#lock-screen", { duration: 1, opacity: 0, onComplete: () => {
+                    document.getElementById('lock-screen').style.display = 'none';
+                    document.getElementById('mainContent').style.display = 'block';
+                    document.getElementById('mainNav').style.display = 'flex';
+                    initTimer();
+                    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+                }});
+            } else {
+                error.style.display = 'block';
+                gsap.from("#lock-card", { x: 20, repeat: 5, yoyo: true, duration: 0.05 });
+            }
+        }
 
         // --- 3. BACKGROUND ANIMATION ---
         const canvas = document.getElementById('bg-canvas');
         const ctx = canvas.getContext('2d');
         let particles = [];
-
-        function initCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-
+        function initCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
         class Particle {
             constructor() {
                 this.x = Math.random() * canvas.width;
@@ -366,21 +397,16 @@
                 this.opacity = Math.random();
             }
             update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
+                this.x += this.speedX; this.y += this.speedY;
                 if (this.x > canvas.width) this.x = 0;
                 if (this.y > canvas.height) this.y = 0;
             }
             draw() {
                 ctx.fillStyle = `rgba(255, 77, 109, ${this.opacity})`;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
             }
         }
-
         for(let i=0; i<100; i++) particles.push(new Particle());
-
         function animate() {
             ctx.clearRect(0,0,canvas.width, canvas.height);
             particles.forEach(p => { p.update(); p.draw(); });
@@ -389,34 +415,25 @@
         initCanvas(); animate();
 
         // --- 4. TIMER SYSTEM ---
-        const startDate = new Date("2024-02-14"); // GANTI TANGGAL JADIAN DI SINI
-
-        function updateTimer() {
-            const now = new Date();
-            const diff = now - startDate;
-
-            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-            const mins = Math.floor((diff / 1000 / 60) % 60);
-            const secs = Math.floor((diff / 1000) % 60);
-
-            document.getElementById('timerGrid').innerHTML = `
-                <div class="stat-item"><h3>${days}</h3><p>Hari</p></div>
-                <div class="stat-item"><h3>${hours}</h3><p>Jam</p></div>
-                <div class="stat-item"><h3>${mins}</h3><p>Menit</p></div>
-                <div class="stat-item"><h3>${secs}</h3><p>Detik</p></div>
-            `;
+        function initTimer() {
+            const startDate = new Date(TANGGAL_JADIAN);
+            setInterval(() => {
+                const diff = new Date() - startDate;
+                const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+                const mins = Math.floor((diff / 1000 / 60) % 60);
+                const secs = Math.floor((diff / 1000) % 60);
+                document.getElementById('timerGrid').innerHTML = `
+                    <div class="stat-item"><h3>${days}</h3><p>Hari</p></div>
+                    <div class="stat-item"><h3>${hours}</h3><p>Jam</p></div>
+                    <div class="stat-item"><h3>${mins}</h3><p>Menit</p></div>
+                    <div class="stat-item"><h3>${secs}</h3><p>Detik</p></div>
+                `;
+            }, 1000);
         }
-        setInterval(updateTimer, 1000);
 
         // --- 5. REASON GENERATOR ---
-        const reasons = [
-            "Karena kamu selalu ada saat aku butuh.",
-            "Karena tawamu adalah suara favoritku.",
-            "Karena kamu membuatku menjadi orang yang lebih baik.",
-            "Karena caramu menatapku membuatku merasa aman.",
-            "Karena tidak ada orang lain yang mengertiku seperti kamu."
-        ];
+        const reasons = ["Karena kamu selalu ada saat aku butuh.", "Karena tawamu adalah suara favoritku.", "Karena kamu membuatku menjadi orang yang lebih baik.", "Karena caramu menatapku membuatku merasa aman.", "Karena tidak ada orang lain yang mengertiku seperti kamu."];
         let reasonIdx = 0;
         function nextReason() {
             reasonIdx = (reasonIdx + 1) % reasons.length;
@@ -431,13 +448,9 @@
         function toggleMusic() {
             const icon = document.querySelector('#playIcon i');
             if(!isPlaying) {
-                audio.play();
-                icon.classList.replace('fa-play', 'fa-pause');
-                isPlaying = true;
+                audio.play(); icon.classList.replace('fa-play', 'fa-pause'); isPlaying = true;
             } else {
-                audio.pause();
-                icon.classList.replace('fa-pause', 'fa-play');
-                isPlaying = false;
+                audio.pause(); icon.classList.replace('fa-pause', 'fa-play'); isPlaying = false;
             }
         }
 
@@ -446,23 +459,12 @@
         noBtn.addEventListener('mouseover', () => {
             const x = Math.random() * (window.innerWidth - 150);
             const y = Math.random() * (window.innerHeight - 150);
-            noBtn.style.left = `${x}px`;
-            noBtn.style.top = `${y}px`;
+            noBtn.style.left = `${x}px`; noBtn.style.top = `${y}px`;
         });
 
         function finalCelebrate() {
-            confetti({
-                particleCount: 150,
-                spread: 70,
-                origin: { y: 0.6 },
-                colors: ['#ff4d6d', '#ffb703', '#ffffff']
-            });
-
-            document.querySelector('#page-4 .card').innerHTML = `
-                <h1 class="title">I LOVE YOU! ❤️</h1>
-                <p>Terima kasih sudah memilihku. Hari ini, besok, dan selamanya.</p>
-                <div style="margin-top:20px; font-size: 5rem;">💍</div>
-            `;
+            confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#ff4d6d', '#ffb703', '#ffffff'] });
+            document.querySelector('#page-4 .card').innerHTML = `<h1 class="title">I LOVE YOU! ❤️</h1><p>Terima kasih sudah memilihku. Hari ini, besok, dan selamanya.</p><div style="margin-top:20px; font-size: 5rem;">💍</div>`;
         }
     </script>
 </body>
